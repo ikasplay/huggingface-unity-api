@@ -1,16 +1,15 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Diagnostics;
+using UnityEngine;
 
 namespace HuggingFace.API {
     public class ConversationTask : TaskBase<string, string, Conversation> {
         public override string taskName => "Conversation";
-        public override string defaultEndpoint => "https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill";
+        public override string defaultEndpoint => "https://router.huggingface.co/hf-inference/models/meta-llama/Llama-3.1-8B-Instruct/v1/chat/completions";
 
         protected override string[] LoadBackupEndpoints() {
-            return new string[] {
-                "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium",
-                "https://api-inference.huggingface.co/models/facebook/blenderbot-3B"
-            };
+            return new string[0];
         }
 
         protected override bool VerifyContext(object context, out Conversation conversation) {
@@ -25,27 +24,30 @@ namespace HuggingFace.API {
             return false;
         }
 
-        protected override IPayload GetPayload(string input, Conversation conversation) {
-            return new JObjectPayload(new JObject {
-                ["inputs"] = new JObject {
-                    new JProperty("past_user_inputs", new JArray(conversation.GetPastUserInputs().ToArray())),
-                    new JProperty("generated_responses", new JArray(conversation.GetGeneratedResponses().ToArray())),
-                    new JProperty("text", input)
-                }
+        protected override IPayload GetPayload(string input, Conversation conversation)
+        {
+            return new JObjectPayload(new JObject
+            {
+                ["messages"] = JArray.FromObject(conversation.GetMessages()),
+                ["model"] = "meta-llama/Llama-3.1-8B-Instruct",
+                ["stream"] = false
             });
         }
 
         protected override bool PostProcess(object raw, string input, Conversation conversation, out string response, out string error) {
             error = "";
+            UnityEngine.Debug.Log((string)raw);
             JObject jsonResponse = JsonConvert.DeserializeObject<JObject>((string)raw);
-            if (!jsonResponse.TryGetValue("generated_text", out JToken responseObject)) {
-                error = "Response does not contain a generated_text field.";
+            string generatedResponse = (string)jsonResponse["choices"][0]["message"]["content"];
+
+            if (generatedResponse == null) {
+                error = "Response does not contain a message field.";
                 response = null;
                 return false;
             }
-            string generatedResponse = responseObject.ToString();
-            conversation.AddUserInput((string)input);
-            conversation.AddGeneratedResponse(generatedResponse);
+
+            //conversation.AddUserInput((string)input);
+            //conversation.AddGeneratedResponse(generatedResponse);
             response = generatedResponse;
             return true;
         }
