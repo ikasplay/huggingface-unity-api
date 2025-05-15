@@ -5,6 +5,23 @@ using UnityEngine;
 
 namespace HuggingFace.API {
     public class ConversationTask : TaskBase<string, string, Conversation> {
+        /*
+        curl "https://xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/v1/chat/completions" \
+            -X POST \
+            -H "Authorization: Bearer hf_XXXXX" \
+            -H "Content-Type: application/json" \
+            -d '{
+                "model": "tgi",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "What is deep learning?"
+                    }
+                ],
+                "max_tokens": 150,
+                "stream": true
+            }'
+        */
         public override string taskName => "Conversation";
         public override string defaultEndpoint => "https://router.huggingface.co/hf-inference/models/meta-llama/Llama-3.1-8B-Instruct/v1/chat/completions";
 
@@ -29,8 +46,9 @@ namespace HuggingFace.API {
             return new JObjectPayload(new JObject
             {
                 ["messages"] = JArray.FromObject(conversation.GetMessages()),
-                ["model"] = "meta-llama/Llama-3.1-8B-Instruct",
-                ["stream"] = false
+                ["model"] = "tgi",
+                ["stream"] = false,
+                ["max_tokens"] = 150
             });
         }
 
